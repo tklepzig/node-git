@@ -1,10 +1,31 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Test</title>
-    </head>
-    <body>
 
-    </body>
+<head>
+    <meta charset="utf-8">
+    <title>Test</title>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+</head>
+
+<body>
+    <textarea rows="8" cols="40"></textarea>
+    <button>Apply</button>
+    <script>
+        $.get('/load', function(data) {
+            $('textarea').val(data);
+        });
+
+        $('button').click(function() {
+            $('button').prop('disabled', true);
+            $.post('/apply', {
+                text: $('textarea').val()
+            }, function(success) {
+                if (success) {
+                    window.location.reload();
+                }
+            });
+        });
+    </script>
+</body>
+
 </html>
