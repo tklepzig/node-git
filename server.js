@@ -22,16 +22,18 @@ function clone() {
 }
 
 function pull() {
-    Git.Repository.open(repoPath).then(function(repo) {
-        repo.fetchAll({
+    var repo;
+
+    return Git.Repository.open(repoPath).then(function(r) {
+        repo = r;
+        return repo.fetchAll({
             credentials: function() {
                 return Git.Cred.userpassPlaintextNew('username', 'password');
             }
-        }).then(function() {
-            repo.mergeBranches('master', 'origin/master');
         });
+    }).then(function() {
+        repo.mergeBranches('master', 'origin/master');
     });
-
 }
 
 function push() {
@@ -60,7 +62,8 @@ function push() {
 function addCommit() {
     var repo, oid;
 
-    Git.Repository.open(repoPath)
+
+    return Git.Repository.open(repoPath)
         .then(function(r) {
             repo = r;
             return repo.openIndex();
@@ -91,31 +94,14 @@ function addCommit() {
             return repo.createCommit('HEAD', author, committer, 'Edit Document 2', oid, [parent]);
         }).then(function(commitId) {
             return console.log('New Commit: ', commitId);
+        })
+        .catch(function(reason) {
+            console.log(reason);
         });
 
 }
 
-// function test() {
-//
-//     var getMostRecentCommit = function(repository) {
-//         return repository.getBranchCommit('master');
-//     };
-//
-//     var getCommitMessage = function(commit) {
-//         return commit.message();
-//     };
-//
-//     Git.Repository.open(__dirname + '/doc-repo')
-//         .then(getMostRecentCommit)
-//         .then(getCommitMessage)
-//         .then(function(message) {
-//             console.log(message);
-//         });
-// }
-
-// clone();
-// addCommit();
-// push();
+clone().then(addCommit).then(push);
 pull();
 
 // app.use(bodyParser.json()); // to support JSON-encoded bodies
