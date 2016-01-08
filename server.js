@@ -6,18 +6,18 @@ var http = require('http').Server(app);
 var fs = require('fs');
 var bodyParser = require('body-parser');
 var Git = require('nodegit');
+var auth = require('./auth.json');
 
 // TODO: use advanced file system handling, e.g. fs-extra
 
-var repoPath = __dirname + '/doc-repo';
-var documentFile = __dirname + '/doc-repo/document';
+var repoPath = __dirname + '/cn-data';
+var documentFile = __dirname + '/cn-data/document-dev';
 
 function clone() {
-    //clone repo if not yet done
-    // if (fs.readdirSync(repoPath).length === 0) {
-
     // TODO: check, if repo is already there and not empty
-    return Git.Clone('https://github.com/tklepzig/cn-doc-test.git', repoPath);
+
+    // if (fs.readdirSync(repoPath).length === 0) {
+    return Git.Clone('https://github.com/cn-data/cn-data.git', repoPath);
     // }
 }
 
@@ -25,29 +25,33 @@ function pull() {
     var repo;
 
     return Git.Repository.open(repoPath).then(function(r) {
-        repo = r;
-        return repo.fetchAll({
-            credentials: function() {
-                return Git.Cred.userpassPlaintextNew('username', 'password');
-            }
+            repo = r;
+            return repo.fetchAll();
+        }).then(function() {
+            return repo.mergeBranches('master', 'origin/master');
+        })
+        /*.then(function(index) {
+                if (index.hasConflicts()) {
+                    console.log('Conflict time!');
+                }
+            })*/
+        .catch(function(reason) {
+            console.log(reason);
         });
-    }).then(function() {
-        repo.mergeBranches('master', 'origin/master');
-    });
 }
 
 function push() {
     var repo;
 
-    Git.Repository.open(repoPath)
+    return Git.Repository.open(repoPath)
         .then(function(r) {
             repo = r;
             return repo.getRemote('origin');
         }).then(function(remote) {
             return remote.push(['refs/heads/master:refs/heads/master'], {
                 callbacks: {
-                    credentials: function(url, userName) {
-                        return Git.Cred.userpassPlaintextNew('username', 'password');
+                    credentials: function() {
+                        return Git.Cred.userpassPlaintextNew(auth.username, auth.password);
                     }
                 }
             });
@@ -69,12 +73,8 @@ function addCommit() {
             return repo.openIndex();
         })
         .then(function(index) {
-            // this file is in the root of the directory and doesn't need a full path
-            index.addByPath('document');
-
-            // this will write files to the index
+            index.addByPath('document-dev');
             index.write();
-
             return index.writeTree();
 
         }).then(function(oidResult) {
@@ -88,21 +88,19 @@ function addCommit() {
 
         }).then(function(parent) {
 
-            var author = Git.Signature.now('Author Name', 'author@email.com');
-            var committer = Git.Signature.now('Commiter Name', 'commiter@email.com');
+            var author = Git.Signature.now('Dev-Author', 'author@email.com');
+            var committer = Git.Signature.now('Dev-Commiter', 'commiter@email.com');
 
-            return repo.createCommit('HEAD', author, committer, 'Edit Document 2', oid, [parent]);
+            return repo.createCommit('HEAD', author, committer, 'dev dummy commit', oid, [parent]);
         }).then(function(commitId) {
             return console.log('New Commit: ', commitId);
         })
         .catch(function(reason) {
             console.log(reason);
         });
-
 }
 
-clone().then(addCommit).then(push);
-pull();
+clone().then(addCommit).then(pull).then(push);
 
 // app.use(bodyParser.json()); // to support JSON-encoded bodies
 // app.use(bodyParser.urlencoded({ // to support URL-encoded bodies
